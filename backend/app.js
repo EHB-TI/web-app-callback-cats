@@ -1,27 +1,65 @@
 require('dotenv').config();
 require('./config/database').connect();
 const express = require('express');
-const functions = require('./config/functions')
-const cors = require('cors');
 const cookieParser = require('cookie-parser');
-
 const app = express();
 
-app.use(cors({
-    origin: process.env.NODE_ENV.trim() == "development" ? "http://localhost:3000" : process.env.WEBSITE_URL,
-    credentials: true,
-    optionSuccessStatus: 200
-}));
+// Helmet
+const helmet = require('helmet');
+app.use(helmet());
+
+// Disable X-POWERED-BY
+app.disable('x-powered-by');
+
+// CORS
+// const cors = require('cors');
+// app.use(cors({
+//     origin: process.env.NODE_ENV.trim() == "development" ? "http://localhost:3000" : process.env.WEBSITE_URL,
+//     credentials: true,
+//     optionSuccessStatus: 200
+// }));
+
+// Accepted Content-Type
+const bodyParser = require('body-parser')
+app.use(bodyParser.json());
+
+// Nodig?
+// Error 406 on wrong Content-Type
+// app.use((req, res, next) => {
+//     if(!req.is('application/json'))
+//         return res.status(406).json({ message: 'Content-Type is not application/json.', errorCode: 406 });
+//     return next();
+// })
+
+// Allowed methods
+const allowedMethods = ['GET', 'POST']
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Methods', allowedMethods.join(', '));
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+
+    if(!allowedMethods.includes(req.method))
+        return res.status(405).json({ message: 'Method Not Allowed', errorCode: 405});
+    
+    return next();
+});
+
 app.use(express.json());
+
+
 app.use((req, res, next) => {
     res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload'); // 2 years
     next();
 });
 app.use(cookieParser());
 
-const auth = require('./middleware/auth');
 
 // Routes
+/// Functions for routes
+const functions = require('./config/functions');
+
+/// Auth check
+const auth = require('./middleware/auth');
+
 app.get('/api/v1/me', auth, functions.getUser);
 app.post('/api/v1/logout', auth, functions.logout);
 
@@ -44,9 +82,26 @@ app.post('/api/v1/addOrder', auth, functions.addOrder);
 app.post('/api/v1/removeOrder', auth, functions.removeOrder);
 
 app.post('/api/v1/register', functions.register);
-app.post('/api/v1/login', functions.login);
+
+// LOGIN
+const loginRoute = '/api/v1/login';
+app.route('/api/v1/login')
+    .get((req, res) => res.status(405).json({ message: 'The get request is not allowed.', errorCode: 405 }))
+    .post(functions.login);
+
+
+
+
 app.post('/api/v1/verify', functions.verify2FAToken);
 
-app.post('/api/v1/welcome', auth, functions.welcome);
+
+
+/// Error 404 on non-existing routes/resources
+app.use((req, res, next) => res.status(404).json({ message: 'This route does not exist.', errorCode: 404 }));
+
+/// Error 405 on non-supported requests
+app.patch('*', (req, res) => res.status(405).json({ message: 'The PATCH request is not allowed.', errorCode: 405 }));
+app.put('*', (req, res) => res.status(405).json({ message: 'The PUT request is not allowed.', errorCode: 405 }));
+app.delete('*', (req, res) => res.status(405).json({ message: 'The DELETE request is not allowed.', errorCode: 405 }));
 
 module.exports = app;
