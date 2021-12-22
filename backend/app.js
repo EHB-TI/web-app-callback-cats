@@ -66,7 +66,6 @@ app.post('/api/v1/logout', auth, functions.logout)
 app.get('/api/v1/menus', auth, functions.getMenus)
 
 app.get('/api/v1/products', auth, functions.getProducts)
-app.post('/api/v1/products', (req, res) => res.status(405).json({ message: 'Method Not Allowed', errorCode: 405 }))
 
 
 app.get('/api/v1/products/:productId', auth, functions.getProduct)
@@ -92,11 +91,31 @@ app.route('/api/v1/login').post(functions.login)
 app.post('/api/v1/verify', functions.verify2FAToken);
 
 
-/// Error 404 on non-existing routes/resources
-app.use((req, res, next) => res.status(404).json({ message: 'This route does not exist.', errorCode: 404 }));
 
 // Error 405 on not supported request
-app.all('*', (req, res) => res.status(405).json({ message: 'Method Not Allowed', errorCode: 405 }))
+app._router.stack.forEach((r) => {
+    // Route exists + without wildcard
+    if(!r.route || r.route.path.includes('*')) return;
+
+    // Get all routes
+    for(const req in r.route.methods) {
+        // All routes only support GET or POST, never both
+        // => Disable method that is not found
+        switch(req) {
+            case 'post':
+                // Disable get request for this post route
+                app.get(r.route.path, (req, res) => res.status(405).json({ message: 'Method Not Allowed', errorCode: 405 }))
+                break;
+            case 'get':
+                // Disable post request for this get route
+                app.post(r.route.path, (req, res) => res.status(405).json({ message: 'Method Not Allowed', errorCode: 405 }))
+                break;
+        }
+    }
+})
+
+/// Error 404 on non-existing routes/resources
+app.use((req, res, next) => res.status(404).json({ message: 'Route does not exist.', errorCode: 404 }));
 
 
 module.exports = app;
