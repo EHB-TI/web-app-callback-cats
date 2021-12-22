@@ -12,12 +12,12 @@ app.use(helmet());
 app.disable('x-powered-by');
 
 // CORS
-// const cors = require('cors');
-// app.use(cors({
-//     origin: process.env.NODE_ENV.trim() == "development" ? "http://localhost:3000" : process.env.WEBSITE_URL,
-//     credentials: true,
-//     optionSuccessStatus: 200
-// }));
+const cors = require('cors');
+app.use(cors({
+    origin: process.env.NODE_ENV.trim() == "development" ? "http://localhost:3000" : process.env.WEBSITE_URL,
+    credentials: true,
+    optionSuccessStatus: 200
+}));
 
 // Accepted Content-Type
 const bodyParser = require('body-parser')
@@ -86,7 +86,7 @@ app.post('/api/v1/removeOrder', auth, functions.removeOrder)
 app.post('/api/v1/register', functions.register);
 
 // LOGIN
-app.route('/api/v1/login').post(functions.login)
+app.post('/api/v1/login', functions.login);
 
 app.post('/api/v1/verify', functions.verify2FAToken);
 
