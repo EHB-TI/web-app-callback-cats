@@ -60,48 +60,43 @@ const functions = require('./config/functions');
 /// Auth check
 const auth = require('./middleware/auth');
 
-app.get('/api/v1/me', auth, functions.getUser);
-app.post('/api/v1/logout', auth, functions.logout);
+app.get('/api/v1/me', auth, functions.getUser)
+app.post('/api/v1/logout', auth, functions.logout)
 
-app.get('/api/v1/menus', auth, functions.getMenus);
+app.get('/api/v1/menus', auth, functions.getMenus)
 
-app.get('/api/v1/products', auth, functions.getProducts);
-app.get('/api/v1/products/:productId', auth, functions.getProduct);
-app.post('/api/v1/products/edit', auth, functions.updateProduct);
-app.post('/api/v1/products/add', auth, functions.addProduct);
+app.get('/api/v1/products', auth, functions.getProducts)
+app.post('/api/v1/products', (req, res) => res.status(405).json({ message: 'Method Not Allowed', errorCode: 405 }))
 
-app.get('/api/v1/toppings', auth, functions.getToppings);
-app.get('/api/v1/breads', auth, functions.getBreads);
-app.get('/api/v1/vegetables', auth, functions.getVegetables);
-app.get('/api/v1/sauces', auth, functions.getSauces);
 
-app.post('/api/v1/createPaymentIntent', auth, functions.createPaymentIntent);
+app.get('/api/v1/products/:productId', auth, functions.getProduct)
+app.post('/api/v1/products/edit', auth, functions.updateProduct)
+app.post('/api/v1/products/add', auth, functions.addProduct)
 
-app.get('/api/v1/orders', auth, functions.getOrders);
-app.post('/api/v1/addOrder', auth, functions.addOrder);
-app.post('/api/v1/removeOrder', auth, functions.removeOrder);
+app.get('/api/v1/toppings', auth, functions.getToppings)
+app.get('/api/v1/breads', auth, functions.getBreads)
+app.get('/api/v1/vegetables', auth, functions.getVegetables)
+app.get('/api/v1/sauces', auth, functions.getSauces)
+
+app.post('/api/v1/createPaymentIntent', auth, functions.createPaymentIntent)
+
+app.get('/api/v1/orders', auth, functions.getOrders)
+app.post('/api/v1/addOrder', auth, functions.addOrder)
+app.post('/api/v1/removeOrder', auth, functions.removeOrder)
 
 app.post('/api/v1/register', functions.register);
 
 // LOGIN
-const loginRoute = '/api/v1/login';
-app.route('/api/v1/login')
-    .get((req, res) => res.status(405).json({ message: 'The get request is not allowed.', errorCode: 405 }))
-    .post(functions.login);
-
-
-
+app.route('/api/v1/login').post(functions.login)
 
 app.post('/api/v1/verify', functions.verify2FAToken);
-
 
 
 /// Error 404 on non-existing routes/resources
 app.use((req, res, next) => res.status(404).json({ message: 'This route does not exist.', errorCode: 404 }));
 
-/// Error 405 on non-supported requests
-app.patch('*', (req, res) => res.status(405).json({ message: 'The PATCH request is not allowed.', errorCode: 405 }));
-app.put('*', (req, res) => res.status(405).json({ message: 'The PUT request is not allowed.', errorCode: 405 }));
-app.delete('*', (req, res) => res.status(405).json({ message: 'The DELETE request is not allowed.', errorCode: 405 }));
+// Error 405 on not supported request
+app.all('*', (req, res) => res.status(405).json({ message: 'Method Not Allowed', errorCode: 405 }))
+
 
 module.exports = app;
