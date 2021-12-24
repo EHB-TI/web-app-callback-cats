@@ -6,7 +6,6 @@ const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 
 const User = require('../model/user');
-const { listen } = require('../app');
 
 
 // CONNECTION
