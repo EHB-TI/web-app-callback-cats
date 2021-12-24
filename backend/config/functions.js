@@ -15,17 +15,30 @@ const client = new mongodb.MongoClient(uri, {
     useUnifiedTopology: true
 });
 const connection = client.connect();
+const config = process.env;
 
 // USER
 const getUser = async (req, res) => {
-    const token = req.headers.cookie.split('token=')[1];
+    // Get token
+    let token;
+    if(req.headers['x-access-token']) {
+        // Token found in header
+        token = req.headers['x-access-token'];
+    } else if(req.headers.cookie) {
+        // Token found in cookies
+        token = req.headers.cookie.split('token=')[1];
+    } else {
+        // No token
+        return res.status(401).json({ message: 'No token has been provided.', errorCode: 401 });
+    }
     
     // Decode token
     let decoded;
     try {
-        decoded = jwt.verify(token, process.env.TOKEN_KEY);
+        decoded = jwt.verify(token, config.TOKEN_KEY);
+        req.user = decoded;
     } catch (err) {
-        return res.status(401).send('Invalid Token');
+        return res.status(403).json({ message: 'Provided token is invalid.', errorCode: 403 });
     }
 
     connection.then(async _ => {
@@ -35,8 +48,8 @@ const getUser = async (req, res) => {
         .then(user => {
             let returnUser = {};
             for(const e in req.query) {
-                // if(!user[e]) console.log('error');
-                returnUser[e] = user[e];
+                if(e != 'password')
+                    returnUser[e] = user[e];
             }
             return returnUser;
         }));
@@ -68,6 +81,10 @@ const getProduct = async (req, res) => {
 }
 
 const updateProduct = async (req, res) => {
+    if(!(req.body._id && req.body.name && parseInt(req.body.stock) && req.body.ingredients && req.body.allergies && parseInt(req.body.price))) {
+        return res.status(400).json({ message: 'Required parameters in body are: _id, name, stock, ingredients, allergies, price', errorCode: 400 });
+    }
+
     const product = {
         _id: req.body._id,
         name: req.body.name,
@@ -78,7 +95,7 @@ const updateProduct = async (req, res) => {
     }
 
     connection.then(async _ => {
-        res.json(await client.db(process.env.DATABASE).collection(process.env.TABLE_PRODUCTS).updateOne({
+        res.status(201).json(await client.db(process.env.DATABASE).collection(process.env.TABLE_PRODUCTS).updateOne({
             _id: new mongodb.ObjectId(product._id),
         }, {
             $set: {
@@ -95,8 +112,12 @@ const updateProduct = async (req, res) => {
 const addProduct = async (req, res) => {
     const product = req.body;
 
+    if(!product || !(req.body.name && parseInt(req.body.stock) && req.body.ingredients && req.body.allergies && parseInt(req.body.price))) {
+        return res.status(400).json({ message: 'Required parameters in body are: name, stock, ingredients, allergies, price', errorCode: 400 });
+    }
+
     connection.then(async _ => {
-        res.json(await client.db(process.env.DATABASE).collection(process.env.TABLE_PRODUCTS).insertOne({
+        res.status(201).json(await client.db(process.env.DATABASE).collection(process.env.TABLE_PRODUCTS).insertOne({
             _id: new mongodb.ObjectId(),
             name: product.name,
             stock: parseInt(product.stock),
@@ -135,13 +156,17 @@ const getSauces = async (req, res) => {
 const createPaymentIntent = async (req, res) => {
     const items = req.body.items;
 
+    if(!items) {
+        return res.status(400).json({ message: 'Required parameters in body are: items', errorCode: 400 });
+    }
+
     await stripe.paymentIntents.create({
             amount: calculateOrderAmount(items),
             currency: 'eur',
             payment_method_types: ['card']
         })
         .then(paymentIntent => {
-            res.json({
+            res.status(201).json({
                 clientSecret: paymentIntent.client_secret
             })
         });
@@ -155,16 +180,16 @@ const calculateOrderAmount = items => {
     return total;
 }
 
-// USER
+// USER REGISTER
 const register = async (req, res) => {
-    // Our register logic starts here
+    // Register
     try {
         // Get user input
         const { email, username, password } = req.body;
 
         // Validate user input
-        if (!(email && username && password)) {
-            return res.status(400).send('All input is required');
+        if(!(email && username && password)) {
+            return res.status(400).json({ message: 'Required parameters in body are: email, username, password', errorCode: 400 });
         }
 
         // check if user already exist
@@ -172,7 +197,7 @@ const register = async (req, res) => {
         const oldUser = await User.findOne({ email });
 
         if (oldUser) {
-            return res.status(409).send('User Already Exist. Please Login');
+            return res.status(409).send({ message: 'User Already Exist. Please Login', errorCode: 409 });
         }
 
         //Encrypt user password
@@ -207,22 +232,22 @@ const register = async (req, res) => {
         res.cookie('token', token, { httpOnly: true });
 
         // user
-        return res.status(200).json(user);
+        return res.status(201).json(user);
     } catch (err) {
-        console.log(err);
+        return res.status(400).json({ message: err, errorCode: 400});
     }
-    // Our register logic ends here
 }
 
+// USER LOGIN
 const login = async (req, res) => {
-    // Our login logic starts here
+    // login
     try {
         // Get user input
         const { email, password } = req.body;
 
         // Validate user input
         if (!(email && password)) {
-            return res.status(400).send('All input is required');
+            return res.status(400).json({ message: 'Required parameters in body are: email, password', errorCode: 400 });
         }
 
         // Validate if user exist in our database
@@ -250,30 +275,29 @@ const login = async (req, res) => {
             res.cookie('token', token);
 
             // user
-            return res.status(200).json(user);
+            return res.status(201).json(user);
         }
 
-        return res.status(400).send('Invalid Credentials');
+        return res.status(400).json({ message: 'Invalid Credentials', errorCode: 400 });
     } catch (err) {
-        console.log(err);
+        return res.status(400).json({ message: err, errorCode: 400});
     }
-    // Our login logic ends here
 }
 
 const logout = async (req, res) => {
     res.clearCookie('token');
     res.removeHeader('token')
     res.removeHeader('cookie')
-
-    console.log(req.headers['x-access-token']);
-    console.log(req.headers.cookie);
-    console.log(req.headers.cookie ? req.headers.cookie.split('token=')[1]:'');
-    return res.status(200);
+    return res.status(201).json({ message: 'User has been logged out', errorCode: 204 });
 };
 
 const verify2FAToken = async (req, res) => {
     const email = req.body.email;
     const token = req.body.token;
+
+    if(!(email && token)) {
+        return res.status(400).json({ message: 'Required parameters in body are: email, password', errorCode: 400 });
+    }
 
     const user = await User.findOne({ email });
 
@@ -297,11 +321,9 @@ const verify2FAToken = async (req, res) => {
             // user
             return res.status(200).json(user);
         } else {
-            return res.json({
-                error: 'token_invalid'
-            });
+            return res.status(400).json({ message: 'Invalid token.', errorCode: 400 });
         }
-    } else return res.status(400).send('Invalid Credentials');
+    } else return res.status(400).send({ message: 'Invalid Credentials.', errorCode: 400 });
 }
 
 const createToken = user => {
@@ -326,8 +348,12 @@ const addOrder = async (req, res) => {
     const userId = req.body.userId;
     const order = req.body.order;
 
+    if(!(userId, order)) {
+        return res.status(400).json({ message: 'Required parameters in body are: userId, order', errorCode: 400 });
+    }
+
     connection.then(async _ => {
-        res.json(await client.db(process.env.DATABASE).collection(process.env.TABLE_ORDERS).insertOne({
+        res.status(201).json(await client.db(process.env.DATABASE).collection(process.env.TABLE_ORDERS).insertOne({
             _id: new mongodb.ObjectId(),
             userId,
             order,
@@ -339,8 +365,12 @@ const addOrder = async (req, res) => {
 const removeOrder = async (req, res) => {
     const order = req.body;
 
+    if(!order || !(order._id)) {
+        return res.status(400).json({ message: 'Required parameters in body are: order, _id', errorCode: 400 });
+    }
+
     connection.then(async _ => {
-        res.json(await client.db(process.env.DATABASE).collection(process.env.TABLE_ORDERS).updateOne({
+        res.status(201).json(await client.db(process.env.DATABASE).collection(process.env.TABLE_ORDERS).updateOne({
             _id: new mongodb.ObjectId(order._id)
         }, {
             $set: {
@@ -350,15 +380,6 @@ const removeOrder = async (req, res) => {
 
         client.close();
     });
-}
-
-// WELCOME
-const welcome = async (req, res) => {
-    // check role
-    if(req.user.type != 'admin') 
-        return res.status(403).send('No permission to access this content.')
-
-    res.status(200).send('Welcome 🙌 ');
 }
 
 module.exports = {
@@ -386,6 +407,4 @@ module.exports = {
     register,
     login,
     verify2FAToken,
-
-    welcome,
 }
