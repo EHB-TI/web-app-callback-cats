@@ -6,6 +6,7 @@ const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 
 const User = require('../model/user');
+const { listen } = require('../app');
 
 
 // CONNECTION
@@ -45,7 +46,8 @@ const getUser = async (req, res) => {
         res.json(await client.db(process.env.DATABASE).collection(process.env.TABLE_USERS).findOne({
             _id: new mongodb.ObjectId(decoded.user_id)
         })
-        .then(user => {
+        .then(async user => {
+            user.orders = await client.db(process.env.DATABASE).collection(process.env.TABLE_ORDERS).find({ userId: decoded.user_id }).toArray();
             let returnUser = {};
             for(const e in req.query) {
                 if(e != 'password')
@@ -58,8 +60,16 @@ const getUser = async (req, res) => {
 
 //MENUS
 const getMenus = async (req, res) => {
+    console.log(new Date().toISOString());
     connection.then(async _ => {
-        res.json(await client.db(process.env.DATABASE).collection(process.env.TABLE_MENUS).find({}).toArray());
+        res.json(await client.db(process.env.DATABASE).collection(process.env.TABLE_MENUS).find(
+            {
+                eindDag: {
+                    //              2021-12-24T16:35:38.626Z
+                    $gte: new Date()
+                }
+            }
+        ).toArray());
     });
 }
 
@@ -71,8 +81,12 @@ const getProducts = async (req, res) => {
 }
 
 const getProduct = async (req, res) => {
-    const productId = req.params.productId;
+    if(!req.params.productId || req.params.productId == 'undefined') {
+        return res.status(400).json({ message: 'Required parameters in url are: productId', errorCode: 400 });
+    }
 
+    const productId = req.params.productId;
+    console.log(productId);
     connection.then(async _ => {
         res.json(await client.db(process.env.DATABASE).collection(process.env.TABLE_PRODUCTS).findOne({
             _id: new mongodb.ObjectId(productId)
@@ -192,6 +206,10 @@ const register = async (req, res) => {
             return res.status(400).json({ message: 'Required parameters in body are: email, username, password', errorCode: 400 });
         }
 
+        console.log(email);
+        email = email.toLowerCase();
+        console.log(email);
+
         // check if user already exist
         // Validate if user exist in our database
         const oldUser = await User.findOne({ email });
@@ -243,12 +261,14 @@ const login = async (req, res) => {
     // login
     try {
         // Get user input
-        const { email, password } = req.body;
+        let { email, password } = req.body;
 
         // Validate user input
         if (!(email && password)) {
             return res.status(400).json({ message: 'Required parameters in body are: email, password', errorCode: 400 });
         }
+        
+        email = email.toLowerCase();
 
         // Validate if user exist in our database
         const user = await User.findOne({ email });
@@ -275,6 +295,8 @@ const login = async (req, res) => {
             res.cookie('token', token);
 
             // user
+            user.orders = await client.db(process.env.DATABASE).collection(process.env.TABLE_ORDERS).find({ userId: user.id }).toArray();
+            console.log(user);
             return res.status(201).json(user);
         }
 
