@@ -39,7 +39,9 @@ const Stock = props => {
                     <td>{product.name}</td>
                     <td>{product.stock}</td>
                     <td>&euro;{product.price / 100}</td>
-                    <td><Link to={`/dashboard/stock/edit/${product._id}`}>Edit</Link></td>
+                    <td>
+                      <Link to={`/dashboard/stock/edit/${product._id}`}>Edit</Link>
+                    </td>
                   </tr>
                 )
               })}

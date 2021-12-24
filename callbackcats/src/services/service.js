@@ -11,7 +11,7 @@ let http = axios.create({
 });
 
 // USER
-export const getUser = (options) => {
+export const getUser = (...options) => {
   return http.get(`me?${options.join('&')}`);
 }
 

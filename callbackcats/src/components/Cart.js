@@ -22,7 +22,7 @@ const Cart = props => {
                                     <th>#</th>
                                     <th>Name</th>
                                     <th>Amount</th>
-                                    <th>Price</th>
+                                    <th>Price each</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -30,10 +30,23 @@ const Cart = props => {
                                     return (
                                         <tr key={props.cart.indexOf(item)}>
                                             <th>{props.cart.indexOf(item) + 1}</th>
-                                            <td onClick={() => history.push(`/product/${item.product._id}`)} style={{ cursor: "pointer" }}>{item.product.name}</td>
-                                            <td>{item.quantity}</td>
-                                            <td>{item.product.price / 100}</td>
-                                            <td><Button variant="danger" onClick={() => props.removeFromCart(item.product)}>Remove</Button></td>
+                                            {
+                                                item.product.name.startsWith('Sandwich') ? 
+                                                    <td className="position-relative">
+                                                        {item.product.name}
+                                                        <span className="ml-4 badge rounded-pill bg-danger" title={item.product.ingredients.sauces.concat(item.product.ingredients.toppings, item.product.ingredients.vegetables).join(', ')}>{item.product.ingredients.sauces.length + item.product.ingredients.toppings.length + item.product.ingredients.vegetables.length} ingredients</span>
+                                                    </td> 
+                                                    : 
+                                                    <td onClick={() => history.push(`/product/${item.product._id}`)} style={{ cursor: "pointer" }}>
+                                                        {item.product.name}
+                                                    </td>
+                                            }
+                                            <td>{item.quantity}x</td>
+                                            <td>&euro; {(item.product.price / 100).toFixed(2)}</td>
+                                            <td>
+                                                <Button variant="outline-secondary" onClick={() => history.push(`/product/${item.product._id}`)} style={{ cursor: "pointer" }}>Edit</Button>
+                                                <Button variant="danger" onClick={() => props.removeFromCart(item.product)}>Remove all</Button>
+                                            </td>
                                         </tr>
                                     )
                                 })

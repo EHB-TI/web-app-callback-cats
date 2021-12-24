@@ -9,8 +9,10 @@ import {
 } from "../services/service";
 
 const CreateSandwich = (props) => {
+  //console.log(JSON.parse(localStorage.getItem('cart')).filter(p => p.product.name.startsWith('Sandwich')).length)
+  
   const [product, setProduct] = useState({
-    name: "Sandwich",
+    name: `Sandwich #${JSON.parse(localStorage.getItem('cart')).filter(p => p.product.name.startsWith('Sandwich')).length + 1}`,
     ingredients: {
       bread: 'white',
       toppings: [],
