@@ -14,7 +14,7 @@ app.disable('x-powered-by');
 // CORS
 const cors = require('cors');
 app.use(cors({
-    origin: process.env.NODE_ENV.trim() == "development" ? "http://localhost:3000" : process.env.WEBSITE_URL,
+    origin: ['https://www.eateecats.be', 'https://eateecats.be'],
     credentials: true,
     optionSuccessStatus: 200
 }));
