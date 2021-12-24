@@ -23,6 +23,8 @@ import Orders from './components/Orders'
 import Checkout from './components/checkout/Checkout';
 import NotFound from './components/NotFound';
 
+import Cookies from 'js-cookie';
+
 function App() {
   const [cart, setCart] = useState(JSON.parse(localStorage.getItem('cart')) || []);
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
@@ -30,15 +32,31 @@ function App() {
   const login = async user => {
     localStorage.setItem("user", JSON.stringify(user));
     setUser(user);
+    window.location.reload(false);
   }
 
   const logout = async _ => {
-    localStorage.setItem("user", null);
+    localStorage.removeItem('user');
+    Cookies.remove('token');
     setUser(JSON.parse(localStorage.getItem("user")));
   }
 
   const addToCart = async (product, quantity) => {
-    let c = [...cart, { product, quantity }];
+    
+    let c = [...cart];
+      // product in cart already
+      let prodFound = false;
+      for(let item of cart) {
+        if(item.product._id && item.product._id === product._id) {
+          item.quantity += quantity;
+          prodFound = true;
+        }
+      }
+    if(!prodFound) {
+      // add product
+      c.push({ product, quantity });
+    }
+
     localStorage.setItem('cart', JSON.stringify(c));
     setCart(c);
   }
@@ -53,7 +71,7 @@ function App() {
   }
 
   const removeFromCart = async product => {
-    let c = cart.filter(item => item.product._id !== product._id);
+    let c = cart.filter(item => item.product.name !== product.name);
     localStorage.setItem('cart', JSON.stringify(c));
     setCart(c);
   }

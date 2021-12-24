@@ -19,21 +19,25 @@ const Profile = props => {
                         <Tab eventKey="orders" title="Orders">
                             <Accordion style={{ margin: '0 auto', padding: '2.5em' }} defaultActiveKey="0">
                                 {props.user.orders.map(order => {
+                                    let prods = []
+                                    let totalPrice = 0;
+                                    for(const p of order.order) {
+                                        prods.push(p.product.name);
+                                        totalPrice += p.quantity * (p.product.price/1000);
+                                    }
+                                    
                                     return (
                                         <Accordion.Item eventKey="0">
                                             <Accordion.Header>Order #{props.user.orders.indexOf(order) + 1}</Accordion.Header>
                                             <Accordion.Body>
-                                                Products: {order.product.name}
+                                                Products: {prods.join(', ')}
                                                 <br />
-                                                Quantity: {order.quantity}
+                                                Total price: &euro; {totalPrice.toFixed(2)}
                                             </Accordion.Body>
                                         </Accordion.Item>
                                     )
                                 })}
                             </Accordion>
-                        </Tab>
-                        <Tab eventKey="2-fact" title="2-Factor Authentication">
-                            <h3>2-Factor Authentication</h3>
                         </Tab>
                     </Tabs>
 

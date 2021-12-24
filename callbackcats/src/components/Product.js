@@ -18,7 +18,10 @@ const Product = props => {
     const history = useHistory();
 
     useEffect(() => {
-        getProduct(props.match.params.id).then(response => setProduct(response.data));
+        getProduct(props.match.params.id).then(response => {
+            console.log(response);
+            setProduct(response.data)
+        });
     }, [props.match.params.id]);
 
     return (
